@@ -1,0 +1,40 @@
+name: commit-lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  commit-messages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit messages
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASE:-}" ]; then
+            range="$BASE..$HEAD"
+          elif [ -n "${BEFORE:-}" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            range="$BEFORE..$HEAD"
+          else
+            range="$HEAD"
+          fi
+          status=0
+          for sha in $(git rev-list --no-merges "$range"); do
+            git log -1 --format=%B "$sha" > /tmp/msg
+            if ! bash .githooks/commit-msg /tmp/msg; then
+              echo "::error::commit $sha does not follow the commit convention (see .gitmessage)"
+              status=1
+            fi
+          done
+          exit $status

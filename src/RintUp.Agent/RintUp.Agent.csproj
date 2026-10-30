@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Server monitoring agent: a single file on the customer's Linux server, Native AOT, does not require root.
+    BCL ONLY: no packages, no dependency on other RintUp projects (the wire contract is a copy under Wire/).
+    Publish: dotnet publish src/RintUp.Agent -c Release -r linux-x64 (or linux-arm64)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RintUp.Agent</RootNamespace>
+    <AssemblyName>rintup-agent</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <EventSourceSupport>false</EventSourceSupport>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <!-- The AOT compiler only kicks in for a RID-specific publish (normal builds and tests do not download packages). -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols>
+    <OptimizationPreference>Size</OptimizationPreference>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RintUp.Agent.Tests" />
+  </ItemGroup>
+</Project>

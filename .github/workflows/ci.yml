@@ -1,0 +1,47 @@
+# Build and test on every push to main and every pull request. Also checks that the Native AOT
+# publish works (AOT and trim warnings are errors here) and that install.sh passes shellcheck.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet build RintUp.Agent.slnx -c Release
+      - run: dotnet test --project tests/RintUp.Agent.Tests -c Release --no-build
+      - name: Native AOT publish (linux-x64)
+        run: |
+          dotnet publish src/RintUp.Agent/RintUp.Agent.csproj -c Release -r linux-x64 -o out
+          ./out/rintup-agent --version
+      - name: shellcheck install.sh
+        run: shellcheck --severity=warning install.sh
+
+  image:
+    name: Container image builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=ci-amd64
+          cache-to: type=gha,mode=max,scope=ci-amd64

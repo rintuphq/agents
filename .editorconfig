@@ -1,0 +1,77 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,md,props,csproj,slnx,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# Style
+csharp_style_namespace_declarations = file_scoped:error
+csharp_prefer_braces = when_multiline:warning
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
+dotnet_sort_system_directives_first = true
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_readonly_field = true:warning
+# unused using
+dotnet_diagnostic.IDE0005.severity = warning
+# file-scoped namespace
+dotnet_diagnostic.IDE0161.severity = error
+
+# Naming: private static fields s_camelCase, other private fields _camelCase
+dotnet_naming_rule.private_static_fields.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields.style = s_camel
+dotnet_naming_rule.private_static_fields.severity = warning
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+dotnet_naming_style.s_camel.required_prefix = s_
+dotnet_naming_style.s_camel.capitalization = camel_case
+dotnet_naming_rule.private_fields.symbols = private_fields
+dotnet_naming_rule.private_fields.style = underscore_camel
+dotnet_naming_rule.private_fields.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_rule.private_consts.symbols = private_consts
+dotnet_naming_rule.private_consts.style = pascal
+dotnet_naming_rule.private_consts.severity = warning
+dotnet_naming_symbols.private_consts.applicable_kinds = field
+dotnet_naming_symbols.private_consts.required_modifiers = const
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+# Security and correctness: errors
+# weak crypto
+dotnet_diagnostic.CA5350.severity = error
+# broken crypto
+dotnet_diagnostic.CA5351.severity = error
+# disabled certificate validation
+dotnet_diagnostic.CA5359.severity = error
+# insecure randomness
+dotnet_diagnostic.CA5394.severity = error
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion
+# C# only: clashes with VB keywords (Shared, Error) do not matter.
+dotnet_diagnostic.CA1716.severity = none
+
+[tests/**.cs]
+# underscores allowed in test names
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1859.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA2007.severity = none
+
+[**.g.cs]
+generated_code = true

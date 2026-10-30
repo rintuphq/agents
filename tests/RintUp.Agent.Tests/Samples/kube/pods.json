@@ -1,0 +1,89 @@
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": { "resourceVersion": "91240", "continue": "" },
+  "items": [
+    {
+      "metadata": {
+        "name": "checkout-7d9f8c6b5-abcde", "namespace": "shop", "creationTimestamp": "2026-10-30T11:00:00Z",
+        "ownerReferences": [ { "apiVersion": "apps/v1", "kind": "ReplicaSet", "name": "checkout-7d9f8c6b5", "controller": true, "blockOwnerDeletion": true } ]
+      },
+      "spec": { "nodeName": "node-a" },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "api", "ready": false, "restartCount": 7,
+            "state": { "waiting": { "reason": "CrashLoopBackOff", "message": "back-off 5m0s restarting failed container=api" } },
+            "lastState": { "terminated": { "exitCode": 1, "reason": "Error", "finishedAt": "2026-10-30T11:58:00Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "checkout-7d9f8c6b5-fghij", "namespace": "shop", "creationTimestamp": "2026-10-30T11:00:00Z",
+        "ownerReferences": [ { "kind": "ReplicaSet", "name": "checkout-7d9f8c6b5", "controller": true } ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "api", "restartCount": 6, "state": { "waiting": { "reason": "CrashLoopBackOff" } } }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "worker-0", "namespace": "shop", "creationTimestamp": "2026-10-29T10:00:00Z",
+        "ownerReferences": [ { "kind": "StatefulSet", "name": "worker", "controller": true } ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "worker", "restartCount": 2, "state": { "running": { "startedAt": "2026-10-30T11:55:00Z" } },
+            "lastState": { "terminated": { "exitCode": 137, "reason": "OOMKilled", "finishedAt": "2026-10-30T11:54:30Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "worker-1", "namespace": "shop", "creationTimestamp": "2026-10-29T10:00:00Z",
+        "ownerReferences": [ { "kind": "StatefulSet", "name": "worker", "controller": true } ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "worker", "restartCount": 1, "state": { "running": {} }, "lastState": { "terminated": { "reason": "OOMKilled", "finishedAt": "2026-10-30T09:00:00Z" } } }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "report-gen", "namespace": "batch", "creationTimestamp": "2026-10-30T11:40:00Z" },
+      "status": { "phase": "Pending", "conditions": [ { "type": "PodScheduled", "status": "False", "reason": "Unschedulable" } ] }
+    },
+    {
+      "metadata": { "name": "fresh", "namespace": "batch", "creationTimestamp": "2026-10-30T11:58:00Z" },
+      "status": { "phase": "Pending" }
+    },
+    {
+      "metadata": {
+        "name": "web-5c6d7-xyz12", "namespace": "shop", "creationTimestamp": "2026-10-30T11:50:00Z",
+        "ownerReferences": [ { "kind": "ReplicaSet", "name": "web-5c6d7", "controller": true } ]
+      },
+      "status": {
+        "phase": "Pending",
+        "containerStatuses": [
+          { "name": "web", "restartCount": 0, "state": { "waiting": { "reason": "ImagePullBackOff", "message": "Back-off pulling image \"registry.example/web:9.9\"" } } }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "doomed", "namespace": "shop", "creationTimestamp": "2026-10-30T10:00:00Z", "deletionTimestamp": "2026-10-30T11:59:00Z"
+      },
+      "status": { "phase": "Running", "containerStatuses": [ { "name": "x", "restartCount": 9, "state": { "waiting": { "reason": "CrashLoopBackOff" } } } ] }
+    }
+  ]
+}

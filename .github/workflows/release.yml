@@ -1,0 +1,262 @@
+# Release on a "vX.Y.Z" tag:
+#   1. tests, and a check that the tag matches AgentVersion.Current in src/RintUp.Agent/AgentRunner.cs
+#   2. Native AOT binaries rintup-agent-linux-x64 and rintup-agent-linux-arm64, each built natively on its own
+#      runner inside an AlmaLinux 8 container (glibc 2.28, so the binaries also run on older distributions)
+#   3. per binary: <name>.sha256 and a cosign keyless signature bundle <name>.sigstore.json
+#   4. multi-arch image ghcr.io/rintuphq/agent:X.Y.Z (amd64 + arm64) with SBOM and provenance, scanned with
+#      Trivy and signed with cosign (keyless, GitHub OIDC)
+#   5. a GitHub release with the binaries, checksums, bundles and install.sh
+#
+# Settings: none beyond the default GITHUB_TOKEN. After the first run, make the "agent" package public in the
+# organization's package settings and link it to this repository.
+#
+# Verify a binary:
+#   cosign verify-blob rintup-agent-linux-x64 --bundle rintup-agent-linux-x64.sigstore.json \
+#     --certificate-identity-regexp '^https://github.com/rintuphq/agents/.github/workflows/release.yml@refs/tags/v' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+# Verify the image:
+#   cosign verify ghcr.io/rintuphq/agent@sha256:... \
+#     --certificate-identity-regexp '^https://github.com/rintuphq/agents/.github/workflows/release.yml@refs/tags/v' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/rintuphq/agent
+
+jobs:
+  test:
+    name: Test and check version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version from tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${REF_NAME#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag must be vX.Y.Z, got $REF_NAME"; exit 1; }
+          grep -q "Current = \"$version\";" src/RintUp.Agent/AgentRunner.cs \
+            || { echo "AgentVersion.Current in src/RintUp.Agent/AgentRunner.cs is not $version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet test --project tests/RintUp.Agent.Tests -c Release
+
+  binaries:
+    name: Binary (${{ matrix.rid }})
+    needs: test
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: almalinux:8
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.test.outputs.version }}
+      ASSET: rintup-agent-${{ matrix.rid }}
+    steps:
+      - name: Native AOT prerequisites
+        run: dnf install -y --setopt=install_weak_deps=False clang zlib-devel binutils libicu git tar gzip findutils
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Publish
+        run: |
+          set -euo pipefail
+          dotnet publish src/RintUp.Agent/RintUp.Agent.csproj -c Release -r "${{ matrix.rid }}" -o out -p:Version="$VERSION"
+          mkdir -p dist
+          cp out/rintup-agent "dist/$ASSET"
+          chmod 0755 "dist/$ASSET"
+          "dist/$ASSET" --version
+          echo "Highest glibc symbol version required:"
+          objdump -T "dist/$ASSET" | grep -oE 'GLIBC_[0-9.]+' | sort -uV | tail -n1
+          (cd dist && sha256sum "$ASSET" > "$ASSET.sha256")
+          cat "dist/$ASSET.sha256"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: bin-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  image-build:
+    name: Image (${{ matrix.arch }})
+    needs: test
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Build and push by digest (untagged)
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: VERSION=${{ needs.test.outputs.version }}
+          provenance: mode=max
+          sbom: true
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=agent-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=agent-${{ matrix.arch }}
+      - name: Keep digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  image-publish:
+    name: Image manifest, scan and signature
+    needs: [test, image-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.manifest.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Multi-arch manifest
+        id: manifest
+        env:
+          VERSION: ${{ needs.test.outputs.version }}
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create -t "$IMAGE:$VERSION" $(printf "$IMAGE@sha256:%s " *)
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{json .Manifest}}' | jq -r .digest)
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read the manifest digest"; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Vulnerability scan (high and critical)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - uses: sigstore/cosign-installer@v4
+      - name: Sign (keyless, GitHub OIDC) and verify
+        env:
+          REF: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          IDENTITY: https://github.com/${{ github.workflow_ref }}
+        run: |
+          cosign sign --yes "$REF"
+          cosign verify "$REF" \
+            --certificate-identity "$IDENTITY" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
+
+  release:
+    name: Sign binaries and publish the release
+    needs: [test, binaries, image-publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # cosign keyless signing
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          pattern: bin-*
+          merge-multiple: true
+      - uses: sigstore/cosign-installer@v4
+      - name: Checksums and signatures
+        env:
+          IDENTITY: https://github.com/${{ github.workflow_ref }}
+        run: |
+          set -euo pipefail
+          cp install.sh dist/install.sh
+          cd dist
+          sha256sum install.sh > install.sh.sha256
+          for asset in rintup-agent-linux-x64 rintup-agent-linux-arm64 install.sh; do
+            sha256sum -c "$asset.sha256"
+            cosign sign-blob --yes --bundle "$asset.sigstore.json" "$asset"
+            cosign verify-blob "$asset" --bundle "$asset.sigstore.json" \
+              --certificate-identity "$IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          done
+          ls -l
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.test.outputs.version }}
+          DIGEST: ${{ needs.image-publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "rintup-agent $VERSION"
+            echo
+            echo "Binaries (Native AOT, glibc 2.28+): rintup-agent-linux-x64, rintup-agent-linux-arm64."
+            echo "Each file has a .sha256 and a cosign keyless signature bundle (.sigstore.json)."
+            echo
+            echo "SHA-256:"
+            echo
+            sed 's/^/    /' dist/*.sha256
+            echo
+            echo "Container image: $IMAGE:$VERSION"
+            echo "Digest: $DIGEST (amd64 + arm64, SBOM and provenance, cosign signed)"
+          } > notes.md
+          gh release create "$TAG" --title "rintup-agent $VERSION" --notes-file notes.md \
+            dist/rintup-agent-linux-x64 dist/rintup-agent-linux-x64.sha256 dist/rintup-agent-linux-x64.sigstore.json \
+            dist/rintup-agent-linux-arm64 dist/rintup-agent-linux-arm64.sha256 dist/rintup-agent-linux-arm64.sigstore.json \
+            dist/install.sh dist/install.sh.sha256 dist/install.sh.sigstore.json

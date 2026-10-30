@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Rejects commit messages that do not follow the repository convention (see .gitmessage).
+set -euo pipefail
+msg_file=$1
+# Ignore comment lines that git strips anyway.
+msg=$(grep -v '^#' "$msg_file" || true)
+first=$(printf '%s\n' "$msg" | sed -n '/[^[:space:]]/{p;q}')
+
+fail() { printf 'commit-msg: %s\n' "$1" >&2; exit 1; }
+
+case "$first" in
+  "Merge "*|"Revert "*) exit 0 ;;
+esac
+printf '%s' "$first" | grep -Eq '^(major|minor|patch|hotfix): [^[:space:]].*' \
+  || fail "first line must start with major:, minor:, patch: or hotfix: followed by a summary"
+[ "${#first}" -le 72 ] || fail "first line is longer than 72 characters"
+if printf '%s\n' "$msg" | grep -Eiq '^[[:space:]]*(co-authored-by|signed-off-by: claude)|generated with|claude\.ai|anthropic'; then
+  fail "co-author, generator or assistant attribution lines are not allowed"
+fi
+if printf '%s' "$msg" | grep -q $'\xe2\x80\x94\|\xe2\x80\x93'; then
+  fail "em dash and en dash characters are not allowed"
+fi

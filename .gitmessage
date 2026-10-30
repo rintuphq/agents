@@ -1,0 +1,17 @@
+
+# <type>: <short summary, imperative, at most 72 characters>
+#
+# Types (pick exactly one):
+#   major:   breaking change (API, configuration, CLI flags, chart values, resource schema)
+#   minor:   backwards compatible new feature
+#   patch:   bug fix or small improvement, no behaviour change for users
+#   hotfix:  urgent fix for something broken in a released version
+#
+# Examples:
+#   minor: add http_timing attribute to rintup_monitor
+#   patch: retry metric upload after a 429 response
+#   major: rename cluster.key to cluster.secretKey in values.yaml
+#
+# Body (optional): explain what and why, wrap at 72 characters.
+# Do not add Co-Authored-By or "Generated with" lines.
+# Do not use em dash or en dash characters.

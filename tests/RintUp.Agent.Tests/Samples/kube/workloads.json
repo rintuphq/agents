@@ -1,0 +1,82 @@
+{
+  "deployments": {
+    "kind": "DeploymentList", "apiVersion": "apps/v1", "metadata": {},
+    "items": [
+      { "metadata": { "name": "checkout", "namespace": "shop" }, "spec": { "replicas": 3 }, "status": { "replicas": 3, "readyReplicas": 1, "availableReplicas": 1, "unavailableReplicas": 2 } },
+      { "metadata": { "name": "web", "namespace": "shop" }, "spec": { "replicas": 2 }, "status": { "replicas": 2 } },
+      { "metadata": { "name": "api", "namespace": "shop" }, "spec": { "replicas": 2 }, "status": { "replicas": 2, "readyReplicas": 2, "availableReplicas": 2 } },
+      { "metadata": { "name": "idle", "namespace": "shop" }, "spec": { "replicas": 0 }, "status": {} }
+    ]
+  },
+  "statefulsets": {
+    "kind": "StatefulSetList", "apiVersion": "apps/v1", "metadata": {},
+    "items": [
+      { "metadata": { "name": "worker", "namespace": "shop" }, "spec": { "replicas": 2 }, "status": { "replicas": 2, "readyReplicas": 2 } },
+      { "metadata": { "name": "db", "namespace": "data" }, "spec": { "replicas": 3 }, "status": { "replicas": 3, "readyReplicas": 2 } }
+    ]
+  },
+  "daemonsets": {
+    "kind": "DaemonSetList", "apiVersion": "apps/v1", "metadata": {},
+    "items": [
+      { "metadata": { "name": "rintup-agent-node", "namespace": "rintup" }, "status": { "desiredNumberScheduled": 4, "numberReady": 4, "numberAvailable": 4 } }
+    ]
+  },
+  "replicasets": {
+    "kind": "ReplicaSetList", "apiVersion": "apps/v1", "metadata": {},
+    "items": [
+      { "metadata": { "name": "checkout-7d9f8c6b5", "namespace": "shop", "ownerReferences": [ { "kind": "Deployment", "name": "checkout", "controller": true } ] } },
+      { "metadata": { "name": "web-5c6d7", "namespace": "shop", "ownerReferences": [ { "kind": "Deployment", "name": "web", "controller": true } ] } }
+    ]
+  },
+  "jobs": {
+    "kind": "JobList", "apiVersion": "batch/v1", "metadata": {},
+    "items": [
+      {
+        "metadata": { "name": "backup-29345678", "namespace": "ops", "ownerReferences": [ { "kind": "CronJob", "name": "backup", "controller": true } ] },
+        "status": { "failed": 4, "conditions": [ { "type": "Failed", "status": "True", "reason": "BackoffLimitExceeded", "message": "Job has reached the specified backoff limit", "lastTransitionTime": "2026-10-30T11:30:00Z" } ] }
+      },
+      {
+        "metadata": { "name": "migrate-old", "namespace": "ops" },
+        "status": { "conditions": [ { "type": "Failed", "status": "True", "reason": "BackoffLimitExceeded", "lastTransitionTime": "2026-10-30T08:00:00Z" } ] }
+      },
+      {
+        "metadata": { "name": "seed", "namespace": "ops" },
+        "status": { "succeeded": 1, "conditions": [ { "type": "Complete", "status": "True", "lastTransitionTime": "2026-10-30T11:50:00Z" } ] }
+      }
+    ]
+  },
+  "events": {
+    "kind": "EventList", "apiVersion": "v1", "metadata": {},
+    "items": [
+      {
+        "metadata": { "name": "report-gen.1", "namespace": "batch", "creationTimestamp": "2026-10-30T11:41:00Z" },
+        "involvedObject": { "kind": "Pod", "name": "checkout-7d9f8c6b5-abcde", "namespace": "shop" },
+        "reason": "FailedMount", "message": "MountVolume.SetUp failed for volume \"config\": configmap \"checkout\" not found",
+        "type": "Warning", "count": 5, "lastTimestamp": "2026-10-30T11:57:00Z"
+      },
+      {
+        "metadata": { "name": "noise.1", "namespace": "shop", "creationTimestamp": "2026-10-30T11:59:00Z" },
+        "involvedObject": { "kind": "Pod", "name": "api-1", "namespace": "shop" },
+        "reason": "Unhealthy", "message": "Readiness probe failed", "type": "Warning", "count": 30, "lastTimestamp": "2026-10-30T11:59:30Z"
+      },
+      {
+        "metadata": { "name": "old.1", "namespace": "data", "creationTimestamp": "2026-10-30T09:00:00Z" },
+        "involvedObject": { "kind": "PersistentVolumeClaim", "name": "data-db-0", "namespace": "data" },
+        "reason": "ProvisioningFailed", "message": "old", "type": "Warning", "lastTimestamp": "2026-10-30T09:00:00Z"
+      },
+      {
+        "metadata": { "name": "series.1", "namespace": "", "creationTimestamp": "2026-10-30T10:00:00Z" },
+        "involvedObject": { "kind": "Node", "name": "node-a" },
+        "reason": "FreeDiskSpaceFailed", "message": "failed to garbage collect required amount of images", "type": "Warning",
+        "eventTime": "2026-10-30T10:00:00.123456Z", "series": { "count": 12, "lastObservedTime": "2026-10-30T11:55:00.000001Z" }
+      }
+    ]
+  },
+  "claims": {
+    "kind": "PersistentVolumeClaimList", "apiVersion": "v1", "metadata": {},
+    "items": [
+      { "metadata": { "name": "data-db-2", "namespace": "data", "creationTimestamp": "2026-10-30T11:30:00Z" }, "status": { "phase": "Pending" } },
+      { "metadata": { "name": "data-db-0", "namespace": "data", "creationTimestamp": "2026-10-01T00:00:00Z" }, "status": { "phase": "Bound" } }
+    ]
+  }
+}

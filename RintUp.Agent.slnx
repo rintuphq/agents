@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RintUp.Agent/RintUp.Agent.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RintUp.Agent.Tests/RintUp.Agent.Tests.csproj" />
+  </Folder>
+</Solution>

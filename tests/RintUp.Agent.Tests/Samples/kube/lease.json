@@ -1,0 +1,19 @@
+{
+  "kind": "Lease",
+  "apiVersion": "coordination.k8s.io/v1",
+  "metadata": {
+    "name": "rintup-cluster-agent",
+    "namespace": "rintup",
+    "uid": "9c7e8f0a-2222-4d1e-8f00-000000000042",
+    "resourceVersion": "88123",
+    "creationTimestamp": "2026-10-30T09:00:00Z",
+    "managedFields": [ { "manager": "rintup-agent", "operation": "Update" } ]
+  },
+  "spec": {
+    "holderIdentity": "rintup-agent-cluster-6b9c-aaaaa",
+    "leaseDurationSeconds": 30,
+    "acquireTime": "2026-10-30T09:00:00.000000Z",
+    "renewTime": "2026-10-30T11:59:50.123456Z",
+    "leaseTransitions": 2
+  }
+}

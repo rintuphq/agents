@@ -1,0 +1,45 @@
+{
+  "kind": "NodeList",
+  "apiVersion": "v1",
+  "metadata": { "resourceVersion": "91234" },
+  "items": [
+    {
+      "metadata": { "name": "node-a", "uid": "0f6c1a2e-1111-4c4e-9a54-000000000001", "creationTimestamp": "2026-10-01T08:00:00Z", "labels": { "kubernetes.io/hostname": "node-a" } },
+      "spec": { "podCIDR": "10.244.0.0/24" },
+      "status": {
+        "conditions": [
+          { "type": "MemoryPressure", "status": "False", "reason": "KubeletHasSufficientMemory", "lastTransitionTime": "2026-10-01T08:00:00Z" },
+          { "type": "Ready", "status": "True", "reason": "KubeletReady", "message": "kubelet is posting ready status", "lastTransitionTime": "2026-10-01T08:01:00Z" }
+        ],
+        "nodeInfo": { "kubeletVersion": "v1.31.2" }
+      }
+    },
+    {
+      "metadata": { "name": "node-b", "creationTimestamp": "2026-10-01T08:00:00Z" },
+      "spec": {},
+      "status": {
+        "conditions": [
+          { "type": "Ready", "status": "Unknown", "reason": "NodeStatusUnknown", "message": "Kubelet stopped posting node status.", "lastTransitionTime": "2026-10-30T11:50:00Z" }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "node-c", "creationTimestamp": "2026-10-30T11:00:00Z" },
+      "spec": { "taints": [ { "key": "ToBeDeletedByClusterAutoscaler", "value": "1793000000", "effect": "NoSchedule" } ] },
+      "status": {
+        "conditions": [
+          { "type": "Ready", "status": "False", "reason": "KubeletNotReady", "lastTransitionTime": "2026-10-30T11:40:00Z" }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "node-d", "creationTimestamp": "2026-10-30T11:58:00Z" },
+      "spec": {},
+      "status": {
+        "conditions": [
+          { "type": "Ready", "status": "False", "reason": "KubeletNotReady", "message": "container runtime network not ready", "lastTransitionTime": "2026-10-30T11:59:00Z" }
+        ]
+      }
+    }
+  ]
+}
